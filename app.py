@@ -116,14 +116,16 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
             cols_inv = st.columns(2)
             with cols_inv[0]:
                 prod1, precio1 = items_prod[i]
+                val_inv1 = int(st.session_state.inventario_inicial[prod1])
                 st.session_state.inventario_inicial[prod1] = st.number_input(
-                    f"{prod1} (${precio1}/caja)", min_value=0, value=st.session_state.inventario_inicial[prod1], step=1, key=f"inv_{prod1}"
+                    f"{prod1} (${precio1}/caja)", min_value=0, value=val_inv1, step=1, key=f"inv_{prod1}"
                 )
             if i + 1 < len(items_prod):
                 with cols_inv[1]:
                     prod2, precio2 = items_prod[i+1]
+                    val_inv2 = int(st.session_state.inventario_inicial[prod2])
                     st.session_state.inventario_inicial[prod2] = st.number_input(
-                        f"{prod2} (${precio2}/caja)", min_value=0, value=st.session_state.inventario_inicial[prod2], step=1, key=f"inv_{prod2}"
+                        f"{prod2} (${precio2}/caja)", min_value=0, value=val_inv2, step=1, key=f"inv_{prod2}"
                     )
 
     # Filtros de Día y Ruta en Menú Desplegable
@@ -196,10 +198,10 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
                         prod1, precio1 = items_prod[i]
                         col_p1 = f"VEND__{prod1}"
                         vendido_total_p1 = df[col_p1].sum() if col_p1 in df.columns else 0
-                        disp1 = max(0, st.session_state.inventario_inicial[prod1] - vendido_total_p1)
+                        disp1 = int(max(0, st.session_state.inventario_inicial[prod1] - vendido_total_p1))
                         
                         cant1 = st.number_input(f"{prod1} (Disp: {disp1}) - ${precio1}", min_value=0, max_value=disp1, value=0, step=1, key=f"v_{prod1}")
-                        cantidades_venta[prod1] = cant1
+                        cantidades_venta[prod1] = int(cant1)
                         subtotal_venta += cant1 * precio1
                         total_cajas_transaccion += cant1
                     
@@ -207,29 +209,29 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
                         prod2, precio2 = items_prod[i+1]
                         col_p2 = f"VEND__{prod2}"
                         vendido_total_p2 = df[col_p2].sum() if col_p2 in df.columns else 0
-                        disp2 = max(0, st.session_state.inventario_inicial[prod2] - vendido_total_p2)
+                        disp2 = int(max(0, st.session_state.inventario_inicial[prod2] - vendido_total_p2))
                         
                         with cols_prod[1]:
                             cant2 = st.number_input(f"{prod2} (Disp: {disp2}) - ${precio2}", min_value=0, max_value=disp2, value=0, step=1, key=f"v_{prod2}")
-                            cantidades_venta[prod2] = cant2
+                            cantidades_venta[prod2] = int(cant2)
                             subtotal_venta += cant2 * precio2
                             total_cajas_transaccion += cant2
             
-            st.markdown(f"### 📦 Total Cajas Venta: {total_cajas_transaccion} | 💵 Total a Cobrar: ${subtotal_venta:,.2f}")
+            st.markdown(f"### 📦 Total Cajas Venta: {int(total_cajas_transaccion)} | 💵 Total a Cobrar: ${subtotal_venta:,.2f}")
             notas = st.text_input("Comentarios / Notas de entrega:")
                 
             if st.form_submit_button("✅ Confirmar Venta y Registrar Visita"):
                 idx_target = df[df['NOMBRE COMERCIAL'] == cliente_sel].index[0]
                 df.loc[idx_target, 'ESTATUS'] = 'Visitado'
                 df.loc[idx_target, 'MONTO_COBRADO'] = subtotal_venta
-                df.loc[idx_target, 'CAJAS_VENDIDAS'] = total_cajas_transaccion
+                df.loc[idx_target, 'CAJAS_VENDIDAS'] = int(total_cajas_transaccion)
                 df.loc[idx_target, 'NOTAS'] = notas
                 
                 for prod, cant in cantidades_venta.items():
                     col_p = f"VEND__{prod}"
                     if col_p not in df.columns:
                         df[col_p] = 0
-                    df.loc[idx_target, col_p] = cant
+                    df.loc[idx_target, col_p] = int(cant)
 
                 save_data(df)
                 st.success(f"🎉 ¡Venta a **{cliente_sel}** registrada ({total_cajas_transaccion} cajas) por ${subtotal_venta:,.2f}!")
@@ -245,7 +247,7 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
         for prod, precio in PRECIOS_PRODUCTOS.items():
             col_p = f"VEND__{prod}"
             cajas_vendidas_total = int(df[col_p].sum()) if col_p in df.columns else 0
-            cajas_iniciales = st.session_state.inventario_inicial[prod]
+            cajas_iniciales = int(st.session_state.inventario_inicial[prod])
             cajas_disponibles = max(0, cajas_iniciales - cajas_vendidas_total)
             
             reporte_inventario.append({
