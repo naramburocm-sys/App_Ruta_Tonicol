@@ -102,7 +102,7 @@ def save_data(df):
 
 df = load_data()
 
-# Control de inventario diario en session_state
+# Control seguro de inventario diario en session_state
 if 'inventario_inicial' not in st.session_state:
     st.session_state.inventario_inicial = {prod: 0 for prod in PRECIOS_PRODUCTOS.keys()}
 
@@ -116,23 +116,25 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
             cols_inv = st.columns(2)
             with cols_inv[0]:
                 prod1, precio1 = items_prod[i]
-                val_inv1 = int(st.session_state.inventario_inicial[prod1])
+                val_inv1 = int(st.session_state.inventario_inicial.get(prod1, 0))
                 st.session_state.inventario_inicial[prod1] = st.number_input(
                     f"{prod1} (${precio1}/caja)", min_value=0, value=val_inv1, step=1, key=f"inv_{prod1}"
                 )
             if i + 1 < len(items_prod):
                 with cols_inv[1]:
                     prod2, precio2 = items_prod[i+1]
-                    val_inv2 = int(st.session_state.inventario_inicial[prod2])
+                    val_inv2 = int(st.session_state.inventario_inicial.get(prod2, 0))
                     st.session_state.inventario_inicial[prod2] = st.number_input(
                         f"{prod2} (${precio2}/caja)", min_value=0, value=val_inv2, step=1, key=f"inv_{prod2}"
                     )
 
-    # Filtros de Día y Ruta en Menú Desplegable
+    # Filtros de Día y Ruta ordenados de Lunes a Domingo
     dias_orden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-    dias_disponibles = [d for d in dias_orden if d in df['DIA_SEMANA'].values]
-    if not dias_disponibles:
-        dias_disponibles = df['DIA_SEMANA'].dropna().unique().tolist()
+    dias_en_df = df['DIA_SEMANA'].dropna().unique().tolist()
+    dias_disponibles = [d for d in dias_orden if d in dias_en_df]
+    for d in dias_en_df:
+        if d not in dias_disponibles:
+            dias_disponibles.append(d)
 
     rutas_disponibles = df['RUTA'].dropna().unique().tolist() if 'RUTA' in df.columns else ['Todas']
 
@@ -151,7 +153,7 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
     df_filtrado = df.copy()
     if dia_sel != "Todos":
         df_filtrado = df_filtrado[df_filtrado['DIA_SEMANA'] == dia_sel]
-    if ruta_sel != "Todos":
+    if ruta_sel != "Todas":
         df_filtrado = df_filtrado[df_filtrado['RUTA'] == ruta_sel]
 
     st.markdown(f"<div class='resumen-title'>📍 Control de Ruta y Cobertura ({dia_sel})</div>", unsafe_allow_html=True)
@@ -198,7 +200,7 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
                         prod1, precio1 = items_prod[i]
                         col_p1 = f"VEND__{prod1}"
                         vendido_total_p1 = df[col_p1].sum() if col_p1 in df.columns else 0
-                        disp1 = int(max(0, st.session_state.inventario_inicial[prod1] - vendido_total_p1))
+                        disp1 = int(max(0, st.session_state.inventario_inicial.get(prod1, 0) - vendido_total_p1))
                         
                         cant1 = st.number_input(f"{prod1} (Disp: {disp1}) - ${precio1}", min_value=0, max_value=disp1, value=0, step=1, key=f"v_{prod1}")
                         cantidades_venta[prod1] = int(cant1)
@@ -209,7 +211,7 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
                         prod2, precio2 = items_prod[i+1]
                         col_p2 = f"VEND__{prod2}"
                         vendido_total_p2 = df[col_p2].sum() if col_p2 in df.columns else 0
-                        disp2 = int(max(0, st.session_state.inventario_inicial[prod2] - vendido_total_p2))
+                        disp2 = int(max(0, st.session_state.inventario_inicial.get(prod2, 0) - vendido_total_p2))
                         
                         with cols_prod[1]:
                             cant2 = st.number_input(f"{prod2} (Disp: {disp2}) - ${precio2}", min_value=0, max_value=disp2, value=0, step=1, key=f"v_{prod2}")
@@ -247,7 +249,7 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
         for prod, precio in PRECIOS_PRODUCTOS.items():
             col_p = f"VEND__{prod}"
             cajas_vendidas_total = int(df[col_p].sum()) if col_p in df.columns else 0
-            cajas_iniciales = int(st.session_state.inventario_inicial[prod])
+            cajas_iniciales = int(st.session_state.inventario_inicial.get(prod, 0))
             cajas_disponibles = max(0, cajas_iniciales - cajas_vendidas_total)
             
             reporte_inventario.append({
@@ -295,7 +297,6 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
                         df[col_p] = 0
                 save_data(df)
                 
-                # 👉 REINICIO ESTRICTO DEL INVENTARIO INICIAL A CERO
                 st.session_state.inventario_inicial = {prod: 0 for prod in PRECIOS_PRODUCTOS.keys()}
                 for prod in PRECIOS_PRODUCTOS.keys():
                     st.session_state[f"inv_{prod}"] = 0
@@ -319,7 +320,6 @@ if not df.empty and 'COORD_LAT' in df.columns and 'COORD_LON' in df.columns:
                         df[col_p] = 0
                 save_data(df)
                 
-                # 👉 REINICIO ESTRICTO DEL INVENTARIO INICIAL A CERO
                 st.session_state.inventario_inicial = {prod: 0 for prod in PRECIOS_PRODUCTOS.keys()}
                 for prod in PRECIOS_PRODUCTOS.keys():
                     st.session_state[f"inv_{prod}"] = 0
