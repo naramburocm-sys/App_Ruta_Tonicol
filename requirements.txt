@@ -1,7 +1,5 @@
-import streamlit as st
-import pandas as pd
-import folium
-from streamlit_folium import st_folium
-from datetime import datetime
-import os
-import base64
+streamlit
+pandas
+numpy
+plotly
+openpyxl
